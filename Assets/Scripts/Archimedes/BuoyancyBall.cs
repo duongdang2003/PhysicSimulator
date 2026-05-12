@@ -9,7 +9,7 @@ public class ArchimedesSimulation : MonoBehaviour
     [SerializeField] private float volumeDM3 = 2f; // dm³ (input from user)
 
     [Header("Object Properties")]
-    [SerializeField] private float objectMass = 5f; // kg
+    [SerializeField] private float objectMass = 2f; // kg
     [SerializeField] private float objectDensity = 500f; // kg/m³
 
     [Header("Water")]
@@ -34,6 +34,13 @@ public class ArchimedesSimulation : MonoBehaviour
         Physics.gravity = new Vector3(0, -gravity, 0);
     }
 
+    private void Start()
+    {
+        // Sync Rigidbody mass with current objectMass value
+        if (rb != null)
+            rb.mass = objectMass;
+    }
+
     private void FixedUpdate()
     {
         // Check if object is underwater
@@ -53,11 +60,8 @@ public class ArchimedesSimulation : MonoBehaviour
         weight = objectMass * gravity;
         netForce = buoyancyForce - weight;
 
-        // Apply buoyancy force
+        // Apply ONLY buoyancy force (weight is already handled by Physics.gravity)
         rb.AddForce(Vector3.up * buoyancyForce, ForceMode.Force);
-
-        // Apply gravity (already handled by Physics.gravity, but explicit for clarity)
-        rb.AddForce(Vector3.down * weight, ForceMode.Force);
 
         // Damping to prevent oscillation
         rb.linearDamping = 2f;
