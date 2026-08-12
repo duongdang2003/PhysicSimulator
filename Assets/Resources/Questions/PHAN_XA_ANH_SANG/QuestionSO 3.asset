@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO 3
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 0
+  Question: "Khi \xE1nh s\xE1ng chi\u1EBFu v\xE0o g\u01B0\u01A1ng ph\u1EB3ng, tia
+    ph\u1EA3n x\u1EA1 s\u1EBD:"
+  Answer: "B\u1EADt tr\u1EDF l\u1EA1i m\xF4i tr\u01B0\u1EDDng c\u0169"
+  Choices:
+  - "Truy\u1EC1n th\u1EB3ng qua g\u01B0\u01A1ng"
+  - "B\u1ECB g\u01B0\u01A1ng h\xFAt v\xE0o"
+  - "B\u1EADt tr\u1EDF l\u1EA1i m\xF4i tr\u01B0\u1EDDng c\u0169"
+  - "M\u1EA5t \u0111i ho\xE0n to\xE0n"

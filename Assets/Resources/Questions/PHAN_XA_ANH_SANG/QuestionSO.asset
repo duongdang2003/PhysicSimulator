@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 0
+  Question: "Tia ph\u1EA3n x\u1EA1 n\u1EB1m trong:"
+  Answer: "M\u1EB7t ph\u1EB3ng ch\u1EE9a tia t\u1EDBi v\xE0 ph\xE1p tuy\u1EBFn"
+  Choices:
+  - "M\u1EB7t ph\u1EB3ng vu\xF4ng g\xF3c v\u1EDBi g\u01B0\u01A1ng"
+  - "M\u1EB7t ph\u1EB3ng ch\u1EE9a tia t\u1EDBi v\xE0 ph\xE1p tuy\u1EBFn"
+  - "M\u1EB7t ph\u1EB3ng song song v\u1EDBi g\u01B0\u01A1ng"
+  - "M\u1EB7t ph\u1EB3ng b\u1EA5t k\u1EF3"

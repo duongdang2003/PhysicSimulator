@@ -1,89 +1,104 @@
+using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class ArchimedesSimulation : MonoBehaviour
+public class ArchimedesOscillation : MonoBehaviour
 {
-    [Header("Archimedes Variables")]
-    [SerializeField] private float liquidDensity = 1000f; // kg/m³
-    [SerializeField] private float gravity = 9.8f; // m/s²
-    [SerializeField] private float volumeDM3 = 2f; // dm³ (input from user)
+    [Header("UI")]
+    [SerializeField] private TMP_InputField densityInput;
+    [SerializeField] private TMP_InputField gravityInput;
+    [SerializeField] private TMP_InputField volumeInput;
+    [SerializeField] private TMP_InputField massInput;
 
-    [Header("Object Properties")]
-    [SerializeField] private float objectMass = 2f; // kg
-    [SerializeField] private float objectDensity = 500f; // kg/m³
+    [SerializeField] private TMP_Text resultText;
 
-    [Header("Water")]
+    [Header("Physics")]
+    [SerializeField] private float damping = 8f;
+
     [SerializeField] private float waterHeight = 0f;
-    [SerializeField] private bool isFullySubmerged = true;
 
     private Rigidbody rb;
-    private float submergedVolume; // m³
-    private float buoyancyForce; // N
-    private float weight; // N
-    private float netForce; // N
-
-    public float BuoyancyForce => buoyancyForce;
-    public float Weight => weight;
-    public float NetForce => netForce;
-    public float SubmergedVolume => submergedVolume;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.mass = objectMass;
-        Physics.gravity = new Vector3(0, -gravity, 0);
-    }
 
-    private void Start()
-    {
-        // Sync Rigidbody mass with current objectMass value
-        if (rb != null)
-            rb.mass = objectMass;
+        rb.useGravity = false;
     }
 
     private void FixedUpdate()
     {
-        // Check if object is underwater
-        bool isUnderWater = transform.position.y < waterHeight;
+        Simulate();
+    }
 
-        if (!isUnderWater)
-        {
-            rb.linearDamping = 0.1f;
+    private void Simulate()
+    {
+        if (!float.TryParse(densityInput.text, out float density))
             return;
+
+        if (!float.TryParse(gravityInput.text, out float gravity))
+            return;
+
+        if (!float.TryParse(volumeInput.text, out float volumeDm3))
+            return;
+
+        if (!float.TryParse(massInput.text, out float mass))
+            return;
+
+        // dm³ -> m³
+        float volume = volumeDm3 * 0.001f;
+
+        // Forces
+        float buoyancyForce =
+            density *
+            gravity *
+            volume;
+
+        float gravityForce =
+            mass *
+            gravity;
+
+        // Net force
+        float netForce =
+            buoyancyForce -
+            gravityForce;
+
+        // Damping
+        float dampingForce =
+            -rb.linearVelocity.y *
+            damping;
+
+        // Final force
+        float finalForce =
+            netForce +
+            dampingForce;
+
+        rb.mass = mass;
+
+        rb.AddForce(
+            Vector3.up * finalForce,
+            ForceMode.Force
+        );
+
+        // UI
+        resultText.text =
+            $"FA = {buoyancyForce:F2} N\n" +
+            $"Fg = {gravityForce:F2} N\n\n";
+
+        if (buoyancyForce > gravityForce)
+        {
+            resultText.text +=
+                "Kết quả: Vật nổi";
         }
-
-        // Convert volume from dm³ to m³ (1 dm³ = 0.001 m³)
-        submergedVolume = volumeDM3 * 0.001f;
-
-        // F = ρ × g × V (Archimedes' Principle)
-        buoyancyForce = liquidDensity * gravity * submergedVolume;
-        weight = objectMass * gravity;
-        netForce = buoyancyForce - weight;
-
-        // Apply ONLY buoyancy force (weight is already handled by Physics.gravity)
-        rb.AddForce(Vector3.up * buoyancyForce, ForceMode.Force);
-
-        // Damping to prevent oscillation
-        rb.linearDamping = 2f;
-    }
-
-    // Set experiment parameters from UI
-    public void SetExperimentParameters(float volumeInDM3, float densityKgM3, float gravityMsSquared, float mass)
-    {
-        volumeDM3 = volumeInDM3;
-        liquidDensity = densityKgM3;
-        gravity = gravityMsSquared;
-        objectMass = mass;
-        rb.mass = objectMass;
-        Physics.gravity = new Vector3(0, -gravity, 0);
-    }
-
-    // Get calculation results for display
-    public void GetResults(out float f_buoyancy, out float f_weight, out float f_net, out float subVolume)
-    {
-        subVolume = submergedVolume;
-        f_buoyancy = buoyancyForce;
-        f_weight = weight;
-        f_net = netForce;
+        else if (buoyancyForce < gravityForce)
+        {
+            resultText.text +=
+                "Kết quả: Vật chìm";
+        }
+        else
+        {
+            resultText.text +=
+                "Kết quả: Vật cân bằng";
+        }
     }
 }

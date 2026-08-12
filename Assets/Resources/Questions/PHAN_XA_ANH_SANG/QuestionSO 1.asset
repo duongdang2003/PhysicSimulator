@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO 1
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 0
+  Question: "Trong hi\u1EC7n t\u01B0\u1EE3ng ph\u1EA3n x\u1EA1 \xE1nh s\xE1ng:"
+  Answer: "G\xF3c t\u1EDBi b\u1EB1ng g\xF3c ph\u1EA3n x\u1EA1"
+  Choices:
+  - "G\xF3c t\u1EDBi lu\xF4n l\u1EDBn h\u01A1n g\xF3c ph\u1EA3n x\u1EA1"
+  - "G\xF3c ph\u1EA3n x\u1EA1 lu\xF4n l\u1EDBn h\u01A1n g\xF3c t\u1EDBi"
+  - "G\xF3c t\u1EDBi b\u1EB1ng g\xF3c ph\u1EA3n x\u1EA1"
+  - "G\xF3c t\u1EDBi b\u1EB1ng 2 l\u1EA7n g\xF3c ph\u1EA3n x\u1EA1"

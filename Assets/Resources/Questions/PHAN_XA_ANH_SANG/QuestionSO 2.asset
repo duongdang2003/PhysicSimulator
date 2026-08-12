@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO 2
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 0
+  Question: "Khi tia t\u1EDBi vu\xF4ng g\xF3c v\u1EDBi g\u01B0\u01A1ng ph\u1EB3ng
+    th\xEC g\xF3c ph\u1EA3n x\u1EA1 b\u1EB1ng:"
+  Answer: "0\xB0"
+  Choices:
+  - "0\xB0"
+  - "30\xB0"
+  - "45\xB0"
+  - "90\xB0"

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO 1
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 1
+  Question: "M\u1ED9t xe \u0111i \u0111\u01B0\u1EE3c qu\xE3ng \u0111\u01B0\u1EDDng
+    120 km trong 2 gi\u1EDD. V\u1EADn t\u1ED1c c\u1EE7a xe l\xE0:"
+  Answer: 60 km/h
+  Choices:
+  - 40 km/h
+  - 50 km/h
+  - 60 km/h
+  - 70 km/h

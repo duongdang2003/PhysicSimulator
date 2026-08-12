@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24d99cf6040f5944084cb7acb435be86, type: 3}
+  m_Name: QuestionSO 4
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionSO
+  QuestionType: 0
+  Topic: 0
+  Question: "N\u1EBFu g\xF3c t\u1EDBi t\u0103ng th\xEAm 15\xB0 th\xEC g\xF3c ph\u1EA3n
+    x\u1EA1 s\u1EBD:"
+  Answer: "T\u0103ng 15\xB0"
+  Choices:
+  - "Gi\u1EA3m 15\xB0"
+  - "T\u0103ng 15\xB0"
+  - "Kh\xF4ng \u0111\u1ED5i"
+  - "T\u0103ng 30\xB0"
