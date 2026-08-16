@@ -5,6 +5,8 @@ using UnityEngine.SceneManagement;
 
 public class QuestionManager : MonoBehaviour
 {
+    private const int QuestionsPerRound = 10;
+
     [SerializeField] private E_Topic topic;
     [SerializeField] private QuestionSO[] questionSOs;
     [SerializeField] private FillTheBlankQuestion fillTheBlankPrefab;
@@ -33,8 +35,6 @@ public class QuestionManager : MonoBehaviour
         {
             backButton.onClick.AddListener(GoToMainMenu);
         }
-        LoadQuestions();
-
         topicTitleText.text = titleText;
 
         LoadQuestionsByTopic(topic);
@@ -129,8 +129,11 @@ public class QuestionManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        questionInstances = new Question[topicQuestions.Length];
-        for (int i = 0; i < topicQuestions.Length; i++)
+        ShuffleArray(topicQuestions);
+
+        int questionCount = Mathf.Min(QuestionsPerRound, topicQuestions.Length);
+        questionInstances = new Question[questionCount];
+        for (int i = 0; i < questionCount; i++)
         {
             Question questionInstance = null;
 
@@ -180,20 +183,16 @@ public class QuestionManager : MonoBehaviour
 
     private void DoAgain()
     {
-        if (questionInstances == null || questionInstances.Length == 0) return;
-
-        ShuffleArray(questionInstances);
-
-        foreach (Question question in questionInstances)
+        if (correctAnswerText != null)
         {
-            if (question is FillTheBlankQuestion fillTheBlank)
-            {
-                fillTheBlank.ResetQuestion();
-            }
-            else if (question is MultiChoiceQuestion multiChoice)
-            {
-                multiChoice.ResetQuestion();
-            }
+            correctAnswerText.text = string.Empty;
+        }
+
+        LoadQuestionsByTopic(topic);
+
+        if (scrollView != null)
+        {
+            scrollView.verticalNormalizedPosition = 1f;
         }
     }
 
@@ -210,7 +209,7 @@ public class QuestionManager : MonoBehaviour
 
     private void GoToMainMenu()
     {
-        SceneManager.LoadScene(0);
+        SceneManager.LoadScene(1);
     }
 }
 
