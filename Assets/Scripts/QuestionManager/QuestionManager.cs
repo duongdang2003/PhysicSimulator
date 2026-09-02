@@ -13,20 +13,23 @@ public class QuestionManager : MonoBehaviour
     [SerializeField] private MultiChoiceQuestion multiChoicePrefab;
     [SerializeField] private ScrollRect scrollView;
     [SerializeField] private Button submitButton;
+    [SerializeField] private Button startButton;
     [SerializeField] private Button doAgainButton;
     [SerializeField] private Button backButton;
     [SerializeField] private TextMeshProUGUI topicTitleText;
     [SerializeField] private TextMeshProUGUI correctAnswerText;
     [SerializeField] private string titleText;
+    [SerializeField] private FirebaseQuestionRepository firebaseQuestionRepository;
+    [SerializeField] private GameObject startPanel;
+    [SerializeField] private GameObject quizPanel;
 
     private Question[] questionInstances;
+    private bool isLoading;
 
     private void Start()
     {
-        if (submitButton != null)
-        {
-            submitButton.onClick.AddListener(OnSubmit);
-        }
+        if (submitButton != null) submitButton.onClick.AddListener(OnSubmit);
+        if (startButton != null) startButton.onClick.AddListener(StartQuiz);
         if (doAgainButton != null)
         {
             doAgainButton.onClick.AddListener(DoAgain);
@@ -35,9 +38,18 @@ public class QuestionManager : MonoBehaviour
         {
             backButton.onClick.AddListener(GoToMainMenu);
         }
-        topicTitleText.text = titleText;
+        if (topicTitleText != null) topicTitleText.text = titleText;
+        if (startPanel != null) startPanel.SetActive(true);
+        if (quizPanel != null) quizPanel.SetActive(false);
+        if (submitButton != null) submitButton.interactable = false;
+    }
 
-        LoadQuestionsByTopic(topic);
+    private void OnDestroy()
+    {
+        if (submitButton != null) submitButton.onClick.RemoveListener(OnSubmit);
+        if (startButton != null) startButton.onClick.RemoveListener(StartQuiz);
+        if (doAgainButton != null) doAgainButton.onClick.RemoveListener(DoAgain);
+        if (backButton != null) backButton.onClick.RemoveListener(GoToMainMenu);
     }
 
     public void LoadQuestions()
@@ -102,6 +114,72 @@ public class QuestionManager : MonoBehaviour
             questionInstance.DisplayQuestion(questionSO);
             questionInstances = new Question[] { questionInstance };
         }
+    }
+
+    public void StartQuiz()
+    {
+        if (isLoading) return;
+
+        if (firebaseQuestionRepository == null)
+        {
+            Debug.LogWarning("FirebaseQuestionRepository chưa được gán. Dùng dữ liệu Resources làm fallback.");
+            LoadQuestionsByTopic(topic);
+            ShowQuizPanel();
+            return;
+        }
+
+        isLoading = true;
+        if (startButton != null) startButton.interactable = false;
+        if (doAgainButton != null) doAgainButton.interactable = false;
+
+        firebaseQuestionRepository.LoadRandomQuestionSet(topic, (questions, error) =>
+        {
+            isLoading = false;
+            if (startButton != null) startButton.interactable = true;
+            if (doAgainButton != null) doAgainButton.interactable = true;
+
+            if (!string.IsNullOrEmpty(error) || questions == null || questions.Count == 0)
+            {
+                Debug.LogError("Không thể load question set: " + error);
+                return;
+            }
+
+            LoadQuestionData(questions);
+            ShowQuizPanel();
+        });
+    }
+
+    private void LoadQuestionData(System.Collections.Generic.List<QuestionData> questionDataList)
+    {
+        Transform parent = scrollView != null ? scrollView.content : null;
+        if (parent == null) return;
+
+        foreach (Transform child in parent) Destroy(child.gameObject);
+        questionInstances = new Question[questionDataList.Count];
+
+        for (int i = 0; i < questionDataList.Count; i++)
+        {
+            Question questionInstance = null;
+            if (questionDataList[i].QuestionType == E_QuestionType.FillTheBlank)
+                questionInstance = Instantiate(fillTheBlankPrefab, parent);
+            else if (questionDataList[i].QuestionType == E_QuestionType.MultiChoices)
+                questionInstance = Instantiate(multiChoicePrefab, parent);
+
+            if (questionInstance != null)
+            {
+                questionInstance.DisplayQuestion(questionDataList[i]);
+                questionInstances[i] = questionInstance;
+            }
+        }
+
+        if (scrollView != null) scrollView.verticalNormalizedPosition = 1f;
+    }
+
+    private void ShowQuizPanel()
+    {
+        if (startPanel != null) startPanel.SetActive(false);
+        if (quizPanel != null) quizPanel.SetActive(true);
+        if (submitButton != null) submitButton.interactable = true;
     }
 
     public void LoadQuestionsByTopic(E_Topic topic)
@@ -188,12 +266,7 @@ public class QuestionManager : MonoBehaviour
             correctAnswerText.text = string.Empty;
         }
 
-        LoadQuestionsByTopic(topic);
-
-        if (scrollView != null)
-        {
-            scrollView.verticalNormalizedPosition = 1f;
-        }
+        StartQuiz();
     }
 
     private void ShuffleArray<T>(T[] array)

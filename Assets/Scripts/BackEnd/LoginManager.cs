@@ -13,6 +13,7 @@ public class LoginManager : MonoBehaviour
     public Button loginBtn;
     public Button backToRegister;
     public GameObject registerForm;
+    [SerializeField] private TMP_Text notifyText;
 
     private void OnEnable()
     {
@@ -26,10 +27,16 @@ public class LoginManager : MonoBehaviour
 
     public void Login()
     {
+        SetNotification(string.Empty);
+
         var request = new LoginWithPlayFabRequest
         {
             Username = userName.text,
-            Password = passWord.text
+            Password = passWord.text,
+            InfoRequestParameters = new GetPlayerCombinedInfoRequestParams
+            {
+                GetUserData = true
+            }
         };
 
         PlayFabClientAPI.LoginWithPlayFab
@@ -42,15 +49,33 @@ public class LoginManager : MonoBehaviour
 
     private void OnLoginSuccess(LoginResult result)
     {
+
+        var data = result.InfoResultPayload.UserData;
+
+        UserSession.Instance.SetData(
+           result.PlayFabId,
+           data["FullName"].Value,
+           data["Class"].Value,
+           data["School"].Value,
+           int.Parse(data["Role"].Value)
+       );
+
         Debug.Log("Login successful!");
         Debug.Log($"PlayFab ID: {result.PlayFabId}");
+        Debug.Log($"Fullname: {data["FullName"].Value}");
 
         SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex + 1);
     }
 
     private void OnLoginFailed(PlayFabError error)
     {
+        SetNotification("Đăng nhập thất bại");
         Debug.LogError(error.GenerateErrorReport());
+    }
+
+    private void SetNotification(string message)
+    {
+        if (notifyText != null) notifyText.text = message;
     }
 
     private void OnDisable()

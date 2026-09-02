@@ -9,6 +9,10 @@ public class Question : MonoBehaviour
     {
     }
 
+    public virtual void DisplayQuestion(QuestionData questionData)
+    {
+    }
+
     public virtual void ResetQuestion()
     {
     }

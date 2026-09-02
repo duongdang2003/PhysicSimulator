@@ -5,6 +5,8 @@ using UnityEngine;
 public class MainMenuManager : MonoBehaviour
 {
     public TMP_Text studentName;
+    public GameObject ModeSelectPanel;
+
 
     void Start()
     {
@@ -13,33 +15,20 @@ public class MainMenuManager : MonoBehaviour
 
     public void GetStudentName()
     {
-        Debug.Log(PlayFabClientAPI.IsClientLoggedIn());
-        if(PlayFabClientAPI.IsClientLoggedIn())
+        if (UserSession.Instance && UserSession.Instance.IsLogin())
         {
-            if(studentName.text == "")
+            studentName.text = UserSession.Instance.FullName;
+
+            if (UserSession.Instance.Role == 1)
             {
-                Debug.Log("get username");
-                PlayFabClientAPI.GetUserData(
-                    new PlayFab.ClientModels.GetUserDataRequest(),
-                    result =>
-                    {
-                        if(result.Data != null && result.Data.ContainsKey("FullName"))
-                        {
-                            studentName.text = result.Data["FullName"].Value;
-                            Debug.Log(result.Data["FullName"].Value);
-                        }
-                        else
-                        {
-                            Debug.Log("unknow");
-                        }
-                        
-                    },
-                    error =>
-                    {
-                        Debug.Log(error.GenerateErrorReport());
-                    }
-                );
+                ModeSelectPanel.SetActive(true);
             }
+        }
+        else
+        {
+            studentName.text = "Dev";
+            ModeSelectPanel.SetActive(true);
+
         }
     }
 }

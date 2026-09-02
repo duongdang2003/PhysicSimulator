@@ -21,6 +21,18 @@ public class FillTheBlankQuestion : Question
         ResetStatusColor();
     }
 
+    public override void DisplayQuestion(QuestionData questionData)
+    {
+        if (questionData == null || questionData.QuestionType != E_QuestionType.FillTheBlank)
+            return;
+
+        questionText.text = questionData.Question;
+        correctAnswer = questionData.Answer;
+        answerInputField.text = "";
+        feedbackText.text = "";
+        ResetStatusColor();
+    }
+
     public string GetUserAnswer()
     {
         return answerInputField.text.Trim();

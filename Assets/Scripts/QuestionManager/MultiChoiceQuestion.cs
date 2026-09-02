@@ -51,6 +51,34 @@ public class MultiChoiceQuestion : Question
         correctAnswer = questionSO.Answer;
     }
 
+    public override void DisplayQuestion(QuestionData questionData)
+    {
+        if (questionData == null || questionData.QuestionType != E_QuestionType.MultiChoices)
+            return;
+
+        questionText.text = questionData.Question;
+        feedbackText.text = "";
+        selectedAnswer = "";
+        ResetStatusColor();
+
+        string[] choices = questionData is MultiChoicesData multi ? multi.Choices : null;
+        for (int i = 0; i < answerButtons.Length; i++)
+        {
+            if (choices != null && i < choices.Length)
+            {
+                answerTexts[i].text = choices[i];
+                answerButtons[i].gameObject.SetActive(true);
+                answerButtons[i].GetComponent<Image>().color = originalButtonColor;
+            }
+            else
+            {
+                answerButtons[i].gameObject.SetActive(false);
+            }
+        }
+
+        correctAnswer = questionData.Answer;
+    }
+
     private void SelectAnswer(int buttonIndex)
     {
         selectedAnswer = answerTexts[buttonIndex].text;

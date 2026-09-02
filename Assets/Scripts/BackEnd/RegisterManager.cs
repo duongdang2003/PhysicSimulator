@@ -12,9 +12,11 @@ public class RegisterManager : MonoBehaviour
     public TMP_InputField fullName;
     public TMP_InputField studentClass;
     public TMP_InputField schoolName;
+    public TMP_Dropdown role;
     public Button registerBtn;
     public Button backToLogin;
     public GameObject loginForm;
+    [SerializeField] private TMP_Text notifyText;
 
     private void OnEnable()
     {
@@ -28,6 +30,8 @@ public class RegisterManager : MonoBehaviour
 
     public void Register()
     {
+        SetNotification(string.Empty);
+
         var request = new RegisterPlayFabUserRequest
         {
             Username = userName.text,
@@ -54,7 +58,13 @@ public class RegisterManager : MonoBehaviour
 
     public void OnRegisterFailed(PlayFabError result)
     {
+        SetNotification("Đăng ký thất bại");
         Debug.LogError(result.GenerateErrorReport());
+    }
+
+    private void SetNotification(string message)
+    {
+        if (notifyText != null) notifyText.text = message;
     }
 
     private void SaveStudentValue()
@@ -65,7 +75,8 @@ public class RegisterManager : MonoBehaviour
             {
                 {"FullName", fullName.text},
                 {"School", schoolName.text},
-                {"Class", studentClass.text}
+                {"Class", studentClass.text},
+                {"Role", role.value.ToString()}
             }
         };
 

@@ -17,6 +17,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/LighReflection.unity
     guid: 23b522976c51f244c881363740642754
+  - enabled: 1
+    path: Assets/Scenes/SpringExperiment.unity
+    guid: 760c8f93f95cb4640a3f19ad4a706bab
+  - enabled: 1
+    path: Assets/Scenes/LeverExperiment.unity
+    guid: aa5dcf4a78089b244afc4e509863ca60
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
