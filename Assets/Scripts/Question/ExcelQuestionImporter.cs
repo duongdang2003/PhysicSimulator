@@ -21,9 +21,23 @@ public static class ExcelQuestionImporter
             return false;
         }
 
-        if (!string.Equals(Path.GetExtension(filePath), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        string extension = Path.GetExtension(filePath);
+        if (string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
         {
-            error = "Chỉ hỗ trợ file Excel .xlsx.";
+            try
+            {
+                return TryImport(File.ReadAllBytes(filePath), Path.GetFileName(filePath), out topic, out questions, out error);
+            }
+            catch (Exception exception)
+            {
+                error = "Không thể đọc file CSV: " + exception.Message;
+                return false;
+            }
+        }
+
+        if (!string.Equals(extension, ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            error = "Chỉ hỗ trợ file Excel .xlsx hoặc .csv.";
             return false;
         }
 
@@ -142,6 +156,165 @@ public static class ExcelQuestionImporter
         }
 
         return true;
+    }
+
+    public static bool TryImport(byte[] fileBytes, string fileName, out E_Topic topic, out List<QuestionData> questions, out string error)
+    {
+        topic = default;
+        questions = new List<QuestionData>();
+        error = string.Empty;
+
+        if (fileBytes == null || fileBytes.Length == 0)
+        {
+            error = "File được chọn đang trống.";
+            return false;
+        }
+
+        // WebGL receives the selected file as bytes.
+        string extension = Path.GetExtension(fileName);
+        if (string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryImportCsv(fileBytes, out topic, out questions, out error);
+        }
+
+        string temporaryPath = Path.Combine(UnityEngine.Application.persistentDataPath, "question-import.xlsx");
+        try
+        {
+            File.WriteAllBytes(temporaryPath, fileBytes);
+            return TryImport(temporaryPath, out topic, out questions, out error);
+        }
+        catch (Exception exception)
+        {
+            error = "Không thể lưu file import tạm thời: " + exception.Message;
+            return false;
+        }
+    }
+
+    private static bool TryImportCsv(byte[] fileBytes, out E_Topic topic, out List<QuestionData> questions, out string error)
+    {
+        topic = default;
+        questions = new List<QuestionData>();
+        error = string.Empty;
+
+        try
+        {
+            string csv = Encoding.UTF8.GetString(fileBytes).TrimStart('\uFEFF');
+            List<List<string>> rows = ReadCsvRows(csv);
+            if (rows.Count == 0 || rows[0].Count == 0 || string.IsNullOrWhiteSpace(rows[0][0]))
+            {
+                error = "Dòng đầu tiên phải chứa chủ đề.";
+                return false;
+            }
+
+            if (!Enum.TryParse(rows[0][0].Trim(), true, out topic))
+            {
+                error = $"Chủ đề '{rows[0][0].Trim()}' không tồn tại trong E_Topic.";
+                return false;
+            }
+
+            for (int rowIndex = 1; rowIndex < rows.Count; rowIndex++)
+            {
+                List<string> row = rows[rowIndex];
+                if (IsEmpty(row)) continue;
+
+                string type = GetCell(row, 0);
+                string question = GetCell(row, 1);
+                if (type.Equals("Multi choices", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (row.Count < 7)
+                    {
+                        error = $"Dòng {rowIndex + 1}: câu Multi choices phải có 4 đáp án và đáp án đúng.";
+                        return false;
+                    }
+
+                    string[] choices = new string[4];
+                    for (int choiceIndex = 0; choiceIndex < choices.Length; choiceIndex++)
+                        choices[choiceIndex] = GetCell(row, choiceIndex + 2);
+                    int correctIndex = ParseAnswerIndex(GetCell(row, 6));
+                    bool hasEmptyChoice = false;
+                    for (int choiceIndex = 0; choiceIndex < choices.Length; choiceIndex++)
+                        if (string.IsNullOrWhiteSpace(choices[choiceIndex])) hasEmptyChoice = true;
+                    if (string.IsNullOrWhiteSpace(question) || correctIndex < 0 || hasEmptyChoice)
+                    {
+                        error = $"Dòng {rowIndex + 1}: dữ liệu câu hỏi không hợp lệ.";
+                        return false;
+                    }
+
+                    questions.Add(new MultiChoicesData
+                    {
+                        Question = question,
+                        Topic = topic,
+                        Choices = choices,
+                        CorrectOption = (E_AnswerOption)correctIndex,
+                        Answer = choices[correctIndex]
+                    });
+                }
+                else if (type.Equals("Fill the blank", StringComparison.OrdinalIgnoreCase))
+                {
+                    string answer = GetCell(row, 2);
+                    if (string.IsNullOrWhiteSpace(question) || string.IsNullOrWhiteSpace(answer))
+                    {
+                        error = $"Dòng {rowIndex + 1}: thiếu nội dung câu hỏi hoặc đáp án.";
+                        return false;
+                    }
+
+                    questions.Add(new FillTheBlankData { Question = question, Topic = topic, Answer = answer });
+                }
+                else
+                {
+                    error = $"Dòng {rowIndex + 1}: loại câu hỏi '{type}' không được hỗ trợ.";
+                    return false;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            error = "Không thể đọc file CSV: " + exception.Message;
+            questions.Clear();
+            return false;
+        }
+
+        if (questions.Count == 0) error = "File CSV không chứa câu hỏi nào.";
+        return questions.Count > 0;
+    }
+
+    private static List<List<string>> ReadCsvRows(string csv)
+    {
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var value = new StringBuilder();
+        bool quoted = false;
+
+        for (int i = 0; i < csv.Length; i++)
+        {
+            char character = csv[i];
+            if (character == '"')
+            {
+                if (quoted && i + 1 < csv.Length && csv[i + 1] == '"') { value.Append('"'); i++; }
+                else quoted = !quoted;
+            }
+            else if (character == ',' && !quoted)
+            {
+                row.Add(value.ToString().Trim());
+                value.Clear();
+            }
+            else if ((character == '\n' || character == '\r') && !quoted)
+            {
+                if (character == '\r' && i + 1 < csv.Length && csv[i + 1] == '\n') i++;
+                row.Add(value.ToString().Trim());
+                value.Clear();
+                rows.Add(row);
+                row = new List<string>();
+            }
+            else value.Append(character);
+        }
+
+        if (value.Length > 0 || row.Count > 0)
+        {
+            row.Add(value.ToString().Trim());
+            rows.Add(row);
+        }
+        return rows;
     }
 
     private static List<string> ReadSharedStrings(ZipArchive archive)

@@ -21,11 +21,7 @@ public class RegisterManager : MonoBehaviour
     private void OnEnable()
     {
         registerBtn.onClick.AddListener(Register);
-        backToLogin.onClick.AddListener(() =>
-        {
-            gameObject.SetActive(false);
-            loginForm.SetActive(true);
-        });
+        backToLogin.onClick.AddListener(ShowLoginForm);
     }
 
     public void Register()
@@ -54,6 +50,8 @@ public class RegisterManager : MonoBehaviour
         Debug.Log($"Username: {result.Username}");
 
         SaveStudentValue();
+        ClearRegisterFields();
+        ShowLoginForm();
     }
 
     public void OnRegisterFailed(PlayFabError result)
@@ -65,6 +63,23 @@ public class RegisterManager : MonoBehaviour
     private void SetNotification(string message)
     {
         if (notifyText != null) notifyText.text = message;
+    }
+
+    private void ClearRegisterFields()
+    {
+        if (userName != null) userName.text = string.Empty;
+        if (password != null) password.text = string.Empty;
+        if (fullName != null) fullName.text = string.Empty;
+        if (studentClass != null) studentClass.text = string.Empty;
+        if (schoolName != null) schoolName.text = string.Empty;
+        if (role != null) role.SetValueWithoutNotify(0);
+        SetNotification(string.Empty);
+    }
+
+    private void ShowLoginForm()
+    {
+        gameObject.SetActive(false);
+        if (loginForm != null) loginForm.SetActive(true);
     }
 
     private void SaveStudentValue()
@@ -90,6 +105,7 @@ public class RegisterManager : MonoBehaviour
     private void OnDisable()
     {
         registerBtn.onClick.RemoveListener(Register);
+        backToLogin.onClick.RemoveListener(ShowLoginForm);
 
     }
 }

@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Collections;
 using SFB;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 
 /// <summary>Editor câu hỏi chạy trong UI game. Kéo các reference vào Inspector.</summary>
@@ -64,7 +66,16 @@ public class QuestionEditorUI : MonoBehaviour
                 if (input != null) input.onEndEdit.AddListener(_ => ApplyEditorToSelectedQuestion());
         if (correctAnswerDropdown != null) correctAnswerDropdown.onValueChanged.AddListener(_ => ApplyEditorToSelectedQuestion());
         if (createButton != null) createButton.onClick.AddListener(CreateQuestion);
-        if (importExcelButton != null) importExcelButton.onClick.AddListener(ImportExcelFile);
+        if (importExcelButton != null)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            WebGLFileUploadButton uploadButton = importExcelButton.GetComponent<WebGLFileUploadButton>();
+            if (uploadButton == null) uploadButton = importExcelButton.gameObject.AddComponent<WebGLFileUploadButton>();
+            uploadButton.FileUploaded = ImportWebGLFile;
+#else
+            importExcelButton.onClick.AddListener(ImportExcelFile);
+#endif
+        }
         if (doneButton != null) doneButton.onClick.AddListener(FinishQuestionSet);
         RefreshTypeEditor();
     }
@@ -90,7 +101,7 @@ public class QuestionEditorUI : MonoBehaviour
         }
 
         TMP_Text label = buttonObject.GetComponentInChildren<TMP_Text>(true);
-        if (label != null) label.text = "Import Excel";
+        if (label != null) label.text = "Import CSV / Excel";
     }
 
     private void SetupQuestionTypeDropdown()
@@ -131,6 +142,7 @@ public class QuestionEditorUI : MonoBehaviour
 
     public void ReturnToTopicSelection()
     {
+        ResetQuestionView();
         ShowTopicSelection();
     }
 
@@ -155,16 +167,24 @@ public class QuestionEditorUI : MonoBehaviour
             foreach (TMP_InputField input in choiceInputs) if (input != null) input.onEndEdit.RemoveAllListeners();
         if (correctAnswerDropdown != null) correctAnswerDropdown.onValueChanged.RemoveAllListeners();
         if (createButton != null) createButton.onClick.RemoveListener(CreateQuestion);
-        if (importExcelButton != null) importExcelButton.onClick.RemoveListener(ImportExcelFile);
+        if (importExcelButton != null)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            WebGLFileUploadButton uploadButton = importExcelButton.GetComponent<WebGLFileUploadButton>();
+            if (uploadButton != null) uploadButton.FileUploaded = null;
+#else
+            importExcelButton.onClick.RemoveListener(ImportExcelFile);
+#endif
+        }
         if (doneButton != null) doneButton.onClick.RemoveListener(FinishQuestionSet);
     }
 
-    /// <summary>Mở hộp chọn file và thêm các câu hỏi từ question template.xlsx.</summary>
+    /// <summary>Mở hộp chọn file và thêm các câu hỏi từ file .xlsx hoặc .csv.</summary>
     public void ImportExcelFile()
     {
         ExtensionFilter[] extensions =
         {
-            new ExtensionFilter("Excel files", "xlsx")
+            new ExtensionFilter("Question files", "xlsx", "csv")
         };
 
         string[] paths = StandaloneFileBrowser.OpenFilePanel(
@@ -175,6 +195,41 @@ public class QuestionEditorUI : MonoBehaviour
 
         if (paths != null && paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
             ImportQuestionsFromExcel(paths[0]);
+    }
+
+    private void ImportWebGLFile(string url)
+    {
+        if (!string.IsNullOrEmpty(url)) StartCoroutine(ImportWebGLFileRoutine(url));
+    }
+
+    private IEnumerator ImportWebGLFileRoutine(string url)
+    {
+        string[] fileParts = url.Split(new[] { '|' }, 2);
+        string fileName = fileParts.Length > 0 && !string.IsNullOrEmpty(fileParts[0])
+            ? System.Uri.UnescapeDataString(fileParts[0])
+            : "uploaded.xlsx";
+        string fileUrl = fileParts.Length > 1 ? fileParts[1] : url;
+
+        using (UnityWebRequest request = UnityWebRequest.Get(fileUrl))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogWarning("Không thể đọc file đã chọn: " + request.error);
+                yield break;
+            }
+
+            if (!ExcelQuestionImporter.TryImport(request.downloadHandler.data, fileName, out E_Topic importedTopic, out List<QuestionData> importedQuestions, out string error))
+            {
+                Debug.LogWarning(error);
+                yield break;
+            }
+
+            if (topicDropdown != null) topicDropdown.SetValueWithoutNotify((int)importedTopic);
+            if (selectedTopicText != null) selectedTopicText.text = importedTopic.ToString();
+            foreach (QuestionData question in importedQuestions) FinishCreateQuestion(question);
+            Debug.Log($"Đã import {importedQuestions.Count} câu hỏi từ file được chọn trên WebGL.");
+        }
     }
 
     /// <summary>API dùng cho UI file picker ở bản build và cũng thuận tiện cho test.</summary>
@@ -248,6 +303,8 @@ public class QuestionEditorUI : MonoBehaviour
             }
 
             Debug.Log("Đã lưu bộ câu hỏi lên Firebase.");
+            ResetQuestionView();
+            ShowTopicSelection();
         });
     }
 
@@ -289,7 +346,48 @@ public class QuestionEditorUI : MonoBehaviour
     {
         if (questionSlotContainer == null || questionSlotPrefab == null) return;
         QuestionSlotUI slot = Instantiate(questionSlotPrefab, questionSlotContainer);
-        slot.InitQuestionSlot(data, SelectQuestion, ClearViewedQuestion);
+        slot.InitQuestionSlot(data, SelectQuestion, ClearViewedQuestion, DeleteQuestion);
+    }
+
+    private void DeleteQuestion(QuestionData data)
+    {
+        if (data == null) return;
+
+        bool wasSelected = ReferenceEquals(selectedQuestion, data);
+        questions.Remove(data);
+        if (wasSelected)
+        {
+            selectedQuestion = null;
+            ClearEditor();
+        }
+
+        if (questionSlotContainer != null)
+        {
+            QuestionSlotUI[] slots = questionSlotContainer.GetComponentsInChildren<QuestionSlotUI>(true);
+            foreach (QuestionSlotUI slot in slots)
+            {
+                if (!slot.HasQuestionData(data)) continue;
+                Destroy(slot.gameObject);
+                break;
+            }
+        }
+    }
+
+    private void ResetQuestionView()
+    {
+        questions.Clear();
+        selectedQuestion = null;
+        ClearEditor();
+
+        if (questionSlotContainer != null)
+        {
+            for (int i = questionSlotContainer.childCount - 1; i >= 0; i--)
+                Destroy(questionSlotContainer.GetChild(i).gameObject);
+        }
+
+        if (questionTypeDropdown != null)
+            questionTypeDropdown.SetValueWithoutNotify((int)E_QuestionType.FillTheBlank);
+        RefreshTypeEditor();
     }
 
     private void RebuildSlots()

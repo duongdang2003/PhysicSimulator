@@ -19,7 +19,13 @@ public class MainMenuManager : MonoBehaviour
         {
             studentName.text = UserSession.Instance.FullName;
 
-            if (UserSession.Instance.Role == 1)
+            if (UserSession.Instance.Role == (int)E_Roles.Student)
+            {
+                ModeSelectPanel.SetActive(true);
+                ModePanel modePanel = ModeSelectPanel.GetComponent<ModePanel>();
+                if (modePanel != null) modePanel.ShowChooseTopicForStudent();
+            }
+            else
             {
                 ModeSelectPanel.SetActive(true);
             }

@@ -1,4 +1,8 @@
 using TMPro;
+using PlayFab;
+using PlayFab.ClientModels;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -18,6 +22,7 @@ public class QuestionManager : MonoBehaviour
     [SerializeField] private Button backButton;
     [SerializeField] private TextMeshProUGUI topicTitleText;
     [SerializeField] private TextMeshProUGUI correctAnswerText;
+    [SerializeField] private TextMeshProUGUI timerText;
     [SerializeField] private string titleText;
     [SerializeField] private FirebaseQuestionRepository firebaseQuestionRepository;
     [SerializeField] private GameObject startPanel;
@@ -25,6 +30,9 @@ public class QuestionManager : MonoBehaviour
 
     private Question[] questionInstances;
     private bool isLoading;
+    private bool isQuizActive;
+    private float quizStartTime;
+    private float elapsedQuizTime;
 
     private void Start()
     {
@@ -42,6 +50,8 @@ public class QuestionManager : MonoBehaviour
         if (startPanel != null) startPanel.SetActive(true);
         if (quizPanel != null) quizPanel.SetActive(false);
         if (submitButton != null) submitButton.interactable = false;
+        EnsureTimerText();
+        UpdateTimerText(0f);
     }
 
     private void OnDestroy()
@@ -50,6 +60,14 @@ public class QuestionManager : MonoBehaviour
         if (startButton != null) startButton.onClick.RemoveListener(StartQuiz);
         if (doAgainButton != null) doAgainButton.onClick.RemoveListener(DoAgain);
         if (backButton != null) backButton.onClick.RemoveListener(GoToMainMenu);
+    }
+
+    private void Update()
+    {
+        if (!isQuizActive) return;
+
+        elapsedQuizTime = Time.realtimeSinceStartup - quizStartTime;
+        UpdateTimerText(elapsedQuizTime);
     }
 
     public void LoadQuestions()
@@ -120,6 +138,15 @@ public class QuestionManager : MonoBehaviour
     {
         if (isLoading) return;
 
+        // Tính thời gian ngay khi người chơi bấm "Làm bài".
+        StartTimer();
+
+#if UNITY_WEBGL
+        // Firebase Unity SDK is not available on WebGL. Use bundled questions.
+        LoadQuestionsByTopic(topic);
+        ShowQuizPanel();
+        return;
+#else
         if (firebaseQuestionRepository == null)
         {
             Debug.LogWarning("FirebaseQuestionRepository chưa được gán. Dùng dữ liệu Resources làm fallback.");
@@ -140,6 +167,7 @@ public class QuestionManager : MonoBehaviour
 
             if (!string.IsNullOrEmpty(error) || questions == null || questions.Count == 0)
             {
+                StopTimer();
                 Debug.LogError("Không thể load question set: " + error);
                 return;
             }
@@ -147,6 +175,7 @@ public class QuestionManager : MonoBehaviour
             LoadQuestionData(questions);
             ShowQuizPanel();
         });
+#endif
     }
 
     private void LoadQuestionData(System.Collections.Generic.List<QuestionData> questionDataList)
@@ -180,6 +209,57 @@ public class QuestionManager : MonoBehaviour
         if (startPanel != null) startPanel.SetActive(false);
         if (quizPanel != null) quizPanel.SetActive(true);
         if (submitButton != null) submitButton.interactable = true;
+    }
+
+    private void StartTimer()
+    {
+        quizStartTime = Time.realtimeSinceStartup;
+        elapsedQuizTime = 0f;
+        isQuizActive = true;
+        UpdateTimerText(0f);
+    }
+
+    private void StopTimer()
+    {
+        if (!isQuizActive) return;
+
+        elapsedQuizTime = Time.realtimeSinceStartup - quizStartTime;
+        isQuizActive = false;
+        UpdateTimerText(elapsedQuizTime);
+    }
+
+    private void UpdateTimerText(float seconds)
+    {
+        if (timerText == null) return;
+
+        TimeSpan time = TimeSpan.FromSeconds(Mathf.Max(0f, seconds));
+        timerText.text = $"Thời gian: {(int)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+    }
+
+    private void EnsureTimerText()
+    {
+        if (timerText != null || quizPanel == null) return;
+
+        Transform existingTimer = quizPanel.transform.Find("TimerText");
+        if (existingTimer != null)
+        {
+            timerText = existingTimer.GetComponent<TextMeshProUGUI>();
+            if (timerText != null) return;
+        }
+
+        GameObject timerObject = new GameObject("TimerText", typeof(RectTransform));
+        timerObject.transform.SetParent(quizPanel.transform, false);
+        timerText = timerObject.AddComponent<TextMeshProUGUI>();
+        timerText.alignment = TextAlignmentOptions.Center;
+        timerText.fontSize = 28f;
+        timerText.color = Color.black;
+
+        RectTransform rect = timerObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -20f);
+        rect.sizeDelta = new Vector2(420f, 50f);
     }
 
     public void LoadQuestionsByTopic(E_Topic topic)
@@ -234,7 +314,9 @@ public class QuestionManager : MonoBehaviour
 
     private void OnSubmit()
     {
-        if (questionInstances == null || questionInstances.Length == 0) return;
+        if (!isQuizActive || questionInstances == null || questionInstances.Length == 0) return;
+
+        StopTimer();
 
         int correctCount = 0;
         foreach (Question question in questionInstances)
@@ -257,10 +339,46 @@ public class QuestionManager : MonoBehaviour
         {
             correctAnswerText.text = $"Điểm: {correctCount}/{questionInstances.Length}";
         }
+
+        if (submitButton != null) submitButton.interactable = false;
+        SaveQuizResultToPlayFab(correctCount, questionInstances.Length, elapsedQuizTime);
+    }
+
+    private void SaveQuizResultToPlayFab(int correctCount, int totalQuestions, float completionTimeSeconds)
+    {
+        if (!PlayFabClientAPI.IsClientLoggedIn())
+        {
+            Debug.LogWarning("Không thể lưu kết quả bài làm: người chơi chưa đăng nhập PlayFab.");
+            return;
+        }
+
+        int roundedTime = Mathf.Max(0, Mathf.RoundToInt(completionTimeSeconds));
+        TimeSpan time = TimeSpan.FromSeconds(roundedTime);
+        var request = new UpdateUserDataRequest
+        {
+            Data = new Dictionary<string, string>
+            {
+                { "QuizCorrectAnswers", correctCount.ToString() },
+                { "QuizTotalQuestions", totalQuestions.ToString() },
+                { "QuizCompletionTimeSeconds", roundedTime.ToString() },
+                { "QuizCompletionTime", $"{(int)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}" },
+                { "QuizTopic", topic.ToString() },
+                { "QuizSubmittedAtUtc", DateTime.UtcNow.ToString("O") }
+            }
+        };
+
+        PlayFabClientAPI.UpdateUserData(
+            request,
+            _ => Debug.Log($"Đã lưu kết quả bài làm lên PlayFab: {correctCount}/{totalQuestions}, {roundedTime}s."),
+            error => Debug.LogError("Lưu kết quả bài làm lên PlayFab thất bại: " + error.GenerateErrorReport()));
     }
 
     private void DoAgain()
     {
+        if (isLoading) return;
+
+        isQuizActive = false;
+        elapsedQuizTime = 0f;
         if (correctAnswerText != null)
         {
             correctAnswerText.text = string.Empty;

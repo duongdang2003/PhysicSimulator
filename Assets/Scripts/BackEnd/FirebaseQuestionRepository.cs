@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
+#if !UNITY_WEBGL
 using Firebase;
 using Firebase.Database;
 using Firebase.Extensions;
+#endif
 using UnityEngine;
+using UnityEngine.Networking;
 
 /// <summary>
 /// Lưu và load question set bằng Firebase Unity SDK.
@@ -11,6 +15,128 @@ using UnityEngine;
 /// questionSets/{topic}/{ownerId}/{setId}/metadata
 /// questionSets/{topic}/{ownerId}/{setId}/questions/{questionId}
 /// </summary>
+#if UNITY_WEBGL
+/// <summary>
+/// Firebase Unity SDK does not support WebGL. This keeps scene references and
+/// callers valid while the WebGL build uses the local Resources fallback.
+/// </summary>
+public class FirebaseQuestionRepository : MonoBehaviour
+{
+    private const string DatabaseUrl = "https://physic-simulator-bd7a4-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    public void SaveQuestions(IList<QuestionData> questions, Action<bool, string> completed = null)
+    {
+        if (questions == null || questions.Count == 0)
+        {
+            completed?.Invoke(false, "Question list is empty.");
+            return;
+        }
+
+        string ownerId = UserSession.Instance == null ? string.Empty : UserSession.Instance.UserID;
+        if (string.IsNullOrWhiteSpace(ownerId))
+        {
+            completed?.Invoke(false, "User chưa đăng nhập PlayFab.");
+            return;
+        }
+
+        E_Topic topic = questions[0].Topic;
+        for (int i = 0; i < questions.Count; i++)
+        {
+            if (questions[i].Topic != topic)
+            {
+                completed?.Invoke(false, "Một question set không được chứa nhiều chủ đề.");
+                return;
+            }
+        }
+
+        string setId = Guid.NewGuid().ToString("N");
+        string path = $"questionSets/{EscapePath(topic.ToString())}/{EscapePath(ownerId)}/{setId}.json";
+        string json = BuildQuestionSetJson(questions, ownerId, topic, setId);
+        StartCoroutine(PutQuestionSet(path, json, setId, completed));
+    }
+
+    public void LoadRandomQuestionSet(E_Topic topic, Action<List<QuestionData>, string> completed)
+    {
+        completed?.Invoke(null, "Firebase is not supported in WebGL builds.");
+    }
+
+    private System.Collections.IEnumerator PutQuestionSet(string path, string json, string setId, Action<bool, string> completed)
+    {
+        using (UnityWebRequest request = UnityWebRequest.Put($"{DatabaseUrl}/{path}", Encoding.UTF8.GetBytes(json)))
+        {
+            request.SetRequestHeader("Content-Type", "application/json");
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                completed?.Invoke(false, request.error);
+                yield break;
+            }
+
+            completed?.Invoke(true, setId);
+        }
+    }
+
+    private static string BuildQuestionSetJson(IList<QuestionData> questions, string ownerId, E_Topic topic, string setId)
+    {
+        long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var builder = new StringBuilder();
+        builder.Append("{\"metadata\":{")
+            .Append("\"ownerId\":").Append(JsonString(ownerId)).Append(',')
+            .Append("\"topic\":").Append(JsonString(topic.ToString())).Append(',')
+            .Append("\"setId\":").Append(JsonString(setId)).Append(',')
+            .Append("\"questionCount\":").Append(questions.Count).Append(',')
+            .Append("\"createdAt\":").Append(createdAt)
+            .Append("},\"questions\":{");
+
+        for (int i = 0; i < questions.Count; i++)
+        {
+            if (i > 0) builder.Append(',');
+            builder.Append(JsonString($"q_{i + 1:000}")).Append(':');
+            AppendQuestionJson(builder, questions[i], ownerId, topic, createdAt);
+        }
+
+        return builder.Append("}}")
+            .ToString();
+    }
+
+    private static void AppendQuestionJson(StringBuilder builder, QuestionData data, string ownerId, E_Topic topic, long createdAt)
+    {
+        MultiChoicesData multi = data as MultiChoicesData;
+        builder.Append('{')
+            .Append("\"ownerId\":").Append(JsonString(ownerId)).Append(',')
+            .Append("\"topic\":").Append(JsonString(topic.ToString())).Append(',')
+            .Append("\"questionType\":").Append(JsonString(data.QuestionType.ToString())).Append(',')
+            .Append("\"question\":").Append(JsonString(data.Question)).Append(',')
+            .Append("\"answer\":").Append(JsonString(data.Answer)).Append(',')
+            .Append("\"choices\":[");
+
+        if (multi != null && multi.Choices != null)
+        {
+            for (int i = 0; i < multi.Choices.Length; i++)
+            {
+                if (i > 0) builder.Append(',');
+                builder.Append(JsonString(multi.Choices[i]));
+            }
+        }
+
+        builder.Append("],\"correctOption\":")
+            .Append(JsonString(multi == null ? string.Empty : multi.CorrectOption.ToString()))
+            .Append(",\"createdAt\":")
+            .Append(createdAt)
+            .Append('}');
+    }
+
+    private static string JsonString(string value)
+    {
+        if (value == null) return "null";
+        return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"")
+            .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t") + "\"";
+    }
+
+    private static string EscapePath(string value) => Uri.EscapeDataString(value ?? string.Empty);
+}
+#else
 public class FirebaseQuestionRepository : MonoBehaviour
 {
     private FirebaseDatabase database;
@@ -229,3 +355,4 @@ public class FirebaseQuestionRepository : MonoBehaviour
         }
     }
 }
+#endif

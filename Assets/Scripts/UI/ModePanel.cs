@@ -48,5 +48,14 @@ public class ModePanel : MonoBehaviour
         _logoutBtn.onClick.RemoveAllListeners();
     }
 
+    public void ShowChooseTopicForStudent()
+    {
+        _createTopicGroupBtn.gameObject.SetActive(false);
+        _chooseTopicGroupBtn.gameObject.SetActive(false);
+        _createTopic.SetActive(false);
+        _chooseTopic.SetActive(true);
+        _backBtn.gameObject.SetActive(false);
+    }
+
     public void ToggleBackBtn(bool toggle) => _backBtn.gameObject.SetActive(toggle);
 }
